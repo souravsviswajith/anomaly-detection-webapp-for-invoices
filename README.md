@@ -1,103 +1,123 @@
-# anomaly-detection-webapp-for-invoices
+# Invoice Anomaly Detection Web App (TensorFlow & TensorFlow.js)
 
-Goal: Build an anomaly detection system for invoice data using TensorFlow and deploy it for web-based checking with TensorFlow.js. The detection should be sensitive even to anomalies in single fields.
+This project demonstrates building an anomaly detection system for invoice data using a TensorFlow Autoencoder model and deploying it for real-time checking within a web browser using TensorFlow.js. It aims to detect anomalies even when only a single input field deviates significantly from the norm.
 
-Approach:
+## Goal
 
-Data Preparation (Python):
+The primary goal is to identify unusual or potentially fraudulent invoice entries by comparing them against patterns learned from a dataset of historical invoices. The anomaly detection happens directly in the user's browser for instant feedback.
 
-Load the invoices.csv data.
+## Features
 
-Select relevant features for anomaly detection (numerical and date fields seem most appropriate for this type of model).
+*   Loads invoice data from a CSV file (`invoices.csv`).
+*   Preprocesses numerical and date features suitable for model training.
+*   Trains a TensorFlow/Keras Autoencoder model to learn the patterns of "normal" invoices.
+*   Determines an anomaly threshold based on the model's reconstruction error on normal data.
+*   Saves the trained model and necessary preprocessing parameters (scaler, threshold).
+*   Converts the Keras model to TensorFlow.js format for web deployment.
+*   Provides a simple web interface (`index.html`) to input new invoice details.
+*   Performs real-time anomaly detection in the browser using the loaded TF.js model (`detector.js`).
+*   Displays whether the entered invoice data is considered "Normal" or an "Anomaly".
 
-Convert date/time to a numerical representation (e.g., Unix timestamp).
+## Technology Stack
 
-Scale numerical features (crucial for neural networks like Autoencoders). We'll use MinMaxScaler.
+*   **Backend / Model Training:**
+    *   Python 3.x
+    *   TensorFlow / Keras
+    *   Pandas
+    *   NumPy
+    *   Scikit-learn (for `MinMaxScaler`)
+    *   Joblib (for saving the scaler object - optional, as parameters are saved separately for JS)
+*   **Model Conversion:**
+    *   `tensorflowjs_converter`
+*   **Frontend / Inference:**
+    *   HTML5
+    *   CSS3
+    *   JavaScript
+    *   TensorFlow.js
 
-Save the scaler parameters (min and scale values) as we'll need them for preprocessing in JavaScript.
-
-Model Building (TensorFlow/Keras - Python):
-
-Use an Autoencoder. This unsupervised neural network learns to reconstruct "normal" input data. Anomalies are expected to have a higher reconstruction error.
-
-Train the autoencoder on the prepared (scaled) "normal" data (we'll assume the provided CSV is mostly normal).
-
-Calculate the reconstruction error (e.g., Mean Absolute Error - MAE) for each training sample.
-
-Determine an anomaly threshold based on the distribution of reconstruction errors (e.g., the 99th percentile).
-
-Save the trained model (.h5 format).
-
-Model Conversion (Command Line):
-
-Use tensorflowjs_converter to convert the saved Keras model (.h5) into a format usable by TensorFlow.js (model.json + weight files).
-
-Web Interface (HTML/JavaScript with TensorFlow.js):
-
-Create an HTML form to input invoice details.
-
-Write JavaScript code to:
-
-Load the converted TensorFlow.js model.
-
-Get input values from the form.
-
-Crucially: Preprocess the input exactly like the Python training data (convert date, scale using the saved scaler parameters).
-
-Make a prediction (reconstruct the input) using the loaded model.
-
-Calculate the reconstruction error (MAE) between the input and the reconstruction.
-
-Compare the error to the pre-determined threshold.
-
-Display whether the input is considered an anomaly or normal.
+## Project Structure
 
 
+*(Note: The `web_anomaly_checker` directory needs to be created manually, and the specified files/folders copied or moved into it after running the Python script and the converter.)*
 
-Explanation:
+## Setup and Installation
 
-Imports: Necessary libraries.
+1.  **Clone the Repository:**
+    ```bash
+    git clone <your-repository-url>
+    cd <repository-directory>
+    ```
 
-Configuration: File paths and feature selection.
+2.  **Set up Python Environment:** (Recommended: Use a virtual environment)
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
+    ```
 
-Data Loading: Reads the CSV.
+3.  **Install Python Dependencies:**
+    ```bash
+    pip install tensorflow pandas numpy scikit-learn joblib tensorflowjs
+    ```
 
-Feature Selection: Keeps only the specified columns.
+4.  **Prepare Data:** Ensure `invoices.csv` is present in the root directory.
 
-Date Conversion: Converts invoice_date to datetime objects, handles errors, calculates Unix timestamps, and drops the original date column. Timestamps are divided initially to prevent them from vastly dominating other features before scaling.
+5.  **Train Model & Generate Files:** Run the Python script. This will create the `.h5` model, scaler files, and threshold file.
+    ```bash
+    python anomaly_detector_train.py
+    ```
 
-Numeric Conversion & NaN Handling: Ensures columns are numeric and fills any missing values (potentially introduced by date or numeric conversion errors) with the median.
+6.  **Convert Keras Model to TF.js:**
+    ```bash
+    tensorflowjs_converter --input_format keras invoice_anomaly_model.h5 web_anomaly_checker/tfjs_model
+    ```
+    *(This command assumes you've created the `web_anomaly_checker` directory first. It saves the converted model directly into the `tfjs_model` subdirectory within it.)*
 
-Scaling: Uses MinMaxScaler to scale features between 0 and 1. This scaler object is saved using joblib.
+7.  **Prepare Web App Directory:** Copy the generated `scaler_params.json` and `anomaly_threshold.json` files into the `web_anomaly_checker` directory:
+    ```bash
+    cp scaler_params.json web_anomaly_checker/
+    cp anomaly_threshold.json web_anomaly_checker/
+    ```
+    *(Adjust paths if your structure differs)*
 
-Saving Scaler Parameters: Extracts the min_ and scale_ attributes from the fitted scaler and saves them to a JSON file. This is essential for correctly preprocessing data in JavaScript later.
+## Usage
 
-Data Split: Splits data for model validation during training (though the threshold is based on training data reconstruction error).
+1.  **Navigate to the Web App Directory:**
+    ```bash
+    cd web_anomaly_checker
+    ```
 
-Autoencoder Model: Defines a simple sequential autoencoder with Dense layers. The bottleneck layer (latent_dim) forces the network to learn a compressed representation. The output layer uses a 'sigmoid' activation because the data is scaled to [0, 1]. The loss function is 'mae'.
+2.  **Start a Local Web Server:** Because browsers have security restrictions about loading files directly from the filesystem (`file://`), you need a simple web server. Python provides one built-in.
+    *   For Python 3: `python -m http.server`
+    *   For Python 2: `python -m SimpleHTTPServer`
 
-Training: Trains the model to reconstruct the input (X_train used as both input and target). Early stopping prevents overfitting.
+3.  **Access the Web App:** Open your web browser and go to `http://localhost:8000` (or the port specified by the server, usually 8000).
 
-Threshold Calculation: Predicts (reconstructs) the training data, calculates the MAE for each sample, and determines the 99th percentile of these errors as the anomaly threshold. This threshold is saved to a JSON file.
+4.  **Enter Invoice Data:** Fill in the details in the web form.
+    *   *Note:* The date input expects `YYYY-MM-DD` format.
 
-Model Saving: Saves the trained Keras model to an .h5 file.
+5.  **Check for Anomaly:** Click the "Check for Anomaly" button.
 
-Step 3: Convert Model for TensorFlow.js
+6.  **View Result:** The application will display whether the input is considered "Normal" or an "Anomaly" based on the model's reconstruction error and the predefined threshold. Check the browser's developer console (F12) for detailed logs and potential errors.
 
-Install TensorFlow.js Converter:
+## How It Works
 
-pip install tensorflowjs
-Use code with caution.
-Bash
-Run the Converter: Open your terminal/command prompt, navigate to the directory where you saved the Python script and ran it, and execute:
+1.  **Autoencoder:** An unsupervised neural network is trained on the scaled numerical/date features of the invoice dataset. It learns to compress (encode) the input data into a lower-dimensional representation (latent space) and then reconstruct (decode) it back to the original dimensions.
+2.  **Reconstruction Error:** The model is trained to minimize the difference (Mean Absolute Error - MAE) between the original input and its reconstruction. It becomes good at reconstructing "normal" data it saw during training.
+3.  **Anomaly Threshold:** When presented with new, potentially anomalous data, the autoencoder struggles to reconstruct it accurately, resulting in a higher reconstruction error. A threshold is calculated (e.g., 99th percentile of errors on training data) to distinguish between normal reconstruction errors and potentially anomalous ones.
+4.  **TensorFlow.js:** The trained Keras model is converted into a format compatible with TensorFlow.js, allowing it to run directly in the web browser without needing a backend server for inference.
+5.  **Client-Side Preprocessing:** The JavaScript code meticulously preprocesses the user's input (date conversion, scaling using *exactly* the same parameters as Python) before feeding it to the TF.js model. This ensures consistency between training and inference.
+6.  **Inference & Decision:** The TF.js model predicts (reconstructs) the preprocessed input. The MAE between the input and reconstruction is calculated and compared against the loaded threshold to classify the input as normal or anomalous.
 
-tensorflowjs_converter --input_format keras invoice_anomaly_model.h5 tfjs_model
-Use code with caution.
-Bash
-Replace invoice_anomaly_model.h5 if you used a different name.
+## Potential Improvements
 
-tfjs_model is the directory where the converted model (model.json and .bin files) will be saved.
+*   **Handle Categorical Features:** Incorporate text features (like `email`, `address`, `city`, `job`) using techniques like embeddings or one-hot encoding (though the latter might significantly increase input dimensions).
+*   **More Sophisticated Date Features:** Extract features like day-of-week, month, is_weekend, etc., from the date instead of just using the timestamp.
+*   **Alternative Models:** Explore other anomaly detection algorithms (e.g., Isolation Forest, One-Class SVM, VAEs) which might perform differently.
+*   **Robust Preprocessing:** Implement more advanced NaN imputation strategies if needed.
+*   **Threshold Tuning:** Adjust the percentile threshold based on the desired sensitivity and tolerance for false positives/negatives.
+*   **UI/UX:** Enhance the web interface for better usability and visualization.
+*   **Deployment:** Deploy the web application to a static web host (like GitHub Pages, Netlify, Vercel).
 
-Step 4: Web Interface (HTML & JavaScript)
+## License
 
-Create the following two files in a new directory (e.g., web_anomaly_checker). Copy the tfjs_model directory (created in Step 3), scaler_params.json, and anomaly_threshold.json into this same web_anomaly_checker directory.
+(Optional: Add your preferred license, e.g., MIT)
