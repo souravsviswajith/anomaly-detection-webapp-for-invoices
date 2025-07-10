@@ -117,7 +117,3 @@ The primary goal is to identify unusual or potentially fraudulent invoice entrie
 *   **Threshold Tuning:** Adjust the percentile threshold based on the desired sensitivity and tolerance for false positives/negatives.
 *   **UI/UX:** Enhance the web interface for better usability and visualization.
 *   **Deployment:** Deploy the web application to a static web host (like GitHub Pages, Netlify, Vercel).
-
-## License
-
-(Optional: Add your preferred license, e.g., MIT)
